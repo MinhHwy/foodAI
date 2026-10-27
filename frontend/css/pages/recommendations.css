@@ -1,0 +1,23 @@
+.recommend-hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(230px, .7fr); gap: 12px; margin-bottom: 14px; }
+
+.calorie-available { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px; }
+
+.calorie-available strong { color: #078b59; font-family: "Plus Jakarta Sans", sans-serif; font-size: 28px; }
+
+.recommend-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+
+.recommend-card { overflow: hidden; }
+
+.recommend-detail-hero { position: relative; min-height: 180px; overflow: hidden; padding: 20px; border-radius: 10px; color: white; }
+
+.recommend-detail-hero img { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.recommend-detail-hero::after { position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg, rgba(8,25,27,.84), rgba(8,25,27,.14)); content: ""; }
+
+.rationale-list { display: grid; gap: 9px; }
+
+.rationale-item { padding: 12px; border: 1px solid #ebeff4; border-radius: 8px; background: #f9fbfd; }
+
+.rationale-item strong { display: block; margin-bottom: 4px; font-size: 10px; }
+
+.rationale-item p { margin: 0; color: var(--quiet); font-size: 9px; line-height: 1.5; }

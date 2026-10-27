@@ -1,0 +1,13 @@
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--canvas); color: var(--ink); }
+
+button, input, select, textarea { font: inherit; }
+
+button { color: inherit; }
+
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(22, 163, 74, .24); outline-offset: 2px; }
+
+button:disabled { cursor: not-allowed; opacity: .55; }
+
+img { display: block; max-width: 100%; }

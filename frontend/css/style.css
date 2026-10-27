@@ -1,0 +1,12 @@
+@import url("./tokens.css");
+@import url("./base.css");
+@import url("./layout.css");
+@import url("./components.css");
+@import url("./pages/auth.css");
+@import url("./pages/dashboard.css");
+@import url("./pages/recognition.css");
+@import url("./pages/diary.css");
+@import url("./pages/recommendations.css");
+@import url("./pages/profile-setup.css");
+@import url("./pages/admin.css");
+@import url("./responsive.css");
