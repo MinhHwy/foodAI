@@ -1,7 +1,5 @@
 # FoodAI Frontend
 
-Giao diện được chuyển sang HTML, CSS và JavaScript thuần. Không dùng React hoặc framework UI. Mở `index.html` trực tiếp trong trình duyệt; ảnh tham chiếu Figma đã được lưu trong `images/`.
-
 ## Cấu trúc mã
 
 - `index.html`: một điểm vào với mount `#app`, file input và vùng thông báo.
