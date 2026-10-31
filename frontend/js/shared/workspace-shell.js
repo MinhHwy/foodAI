@@ -61,7 +61,7 @@ function appShell(content) {
 			</nav>
 			<button class="sidebar-profile" data-action="profile">
 				<span class="avatar">MA</span>
-				<span class="sidebar-profile-copy"><strong>Minh Anh</strong><small>minhanh@gmail.com · Active Pro</small></span>
+				<span class="sidebar-profile-copy"><strong>${esc(state.user?.fullName || "Minh Anh")}</strong><small>${esc(state.user?.email || "minhanh@gmail.com")}${state.me?.goals ? " · " + esc((GOAL_LABELS[state.me?.goals?.goalType] || "Đang hoạt động")) : " · Đang hoạt động"}</small></span>
 			</button>
 		</aside>
 		<section class="workspace">
