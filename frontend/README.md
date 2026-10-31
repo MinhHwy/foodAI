@@ -7,12 +7,36 @@
 - `css/tokens.css`, `base.css`, `layout.css`, `components.css`, `responsive.css`: màu/font, reset, shell, primitive dùng chung và breakpoint.
 - `css/pages/`: style riêng cho auth, dashboard, nhận diện, nhật ký, gợi ý, hồ sơ/thiết lập và admin.
 - `js/data/foods.js`: dữ liệu món ăn và ánh xạ ảnh cục bộ.
-- `js/core/state.js`, `storage.js`: state UI và persistence nhật ký bằng `localStorage`.
+- `js/config/api-config.js`: base URL và timeout mặc định cho API.
+- `js/core/api-client.js`: HTTP client dùng chung cho JSON, FormData, lỗi HTTP/network và timeout; chưa tự gọi API nghiệp vụ.
+- `js/core/state.js`, `storage.js`: state UI và persistence nhật ký demo bằng `localStorage`.
 - `js/shared/components.js`, `shell.js`, `dialogs.js`: helper HTML, shell điều hướng, dialog và UI dùng chung.
 - `js/pages/`: renderer theo các luồng auth, dashboard, recognition, diary, recommendations, profile, setup và admin.
 - `js/router.js`, `events.js`: chọn renderer/điều hướng và đăng ký tương tác; `js/script.js` giữ vai trò bootstrap hiện có.
 
 Các file JavaScript là classic scripts có `defer`, được nạp theo thứ tự trong `index.html`; không dùng `import`, bundler hay React. `shell.js` tạo sidebar/topbar/mobile navigation một lần cho workspace rồi bọc view hiện hành, thay vì lặp markup hoặc include kiểu React. Các trang auth dùng layout riêng theo thiết kế Figma.
+
+## API client (chuẩn bị tích hợp)
+
+Mặc định API client dùng `http://localhost:8080`. Có thể đổi base URL tập trung bằng cách đặt `window.FOODAI_API_BASE_URL` trước khi `js/config/api-config.js` được nạp, hoặc sửa giá trị mặc định trong file cấu hình. Client được cung cấp dưới global `FoodAIApi` để tương thích với classic scripts.
+
+Ví dụ cho service nghiệp vụ sau khi Backend xác nhận contract:
+
+```js
+async function loadResource(apiPath) {
+	return FoodAIApi.get(apiPath);
+}
+
+async function createResource(apiPath, payload) {
+	return FoodAIApi.postJson(apiPath, payload);
+}
+
+async function uploadResource(apiPath, formData) {
+	return FoodAIApi.postFormData(apiPath, formData);
+}
+```
+
+Client trả nguyên response body (không tự unwrap envelope). `ApiError.kind` phân biệt `http`, `application`, `network`, `timeout`, `abort`, `response` và `configuration`; lỗi HTTP có `status` và `body`. Với FormData, client không tự đặt `Content-Type` để trình duyệt tạo multipart boundary. Các trang hiện tại vẫn dùng dữ liệu demo/localStorage cho đến khi có API contract và tích hợp riêng; API client chưa được dùng để gọi Backend.
 
 ## Pages Figma đã kiểm kê
 
