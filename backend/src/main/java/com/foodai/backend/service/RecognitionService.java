@@ -13,21 +13,47 @@ import com.foodai.backend.repository.FoodRepository;
 import com.foodai.backend.repository.RecognitionFeedbackRepository;
 import com.foodai.backend.repository.RecognitionItemRepository;
 import com.foodai.backend.repository.RecognitionSessionRepository;
+import com.foodai.backend.service.RecognitionResultIngestionService.Prediction;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class RecognitionService {
+    private static final Logger log = LoggerFactory.getLogger(RecognitionService.class);
+    private static final String MOCK_MODEL_VERSION = "mock:foodai-demo-v1";
+
     private final RecognitionSessionRepository sessions;
     private final RecognitionItemRepository items;
     private final RecognitionFeedbackRepository feedback;
     private final FoodRepository foods;
     private final NutritionCalculator calculator;
+    private final RecognitionResultIngestionService resultIngestion;
+    private final RestClient aiClient;
+    private final TransactionTemplate transactions;
+    private final String aiBaseUrl;
+    private final boolean useMock;
+    private final boolean fallbackEnabled;
 
     public RecognitionService(RecognitionSessionRepository sessions,
                               RecognitionItemRepository items,
@@ -38,6 +64,44 @@ public class RecognitionService {
         this.feedback = feedback;
         this.foods = foods;
         this.calculator = calculator;
+        this.resultIngestion = null;
+        this.aiClient = null;
+        this.transactions = null;
+        this.aiBaseUrl = null;
+        this.useMock = false;
+        this.fallbackEnabled = false;
+    }
+
+    @Autowired
+    public RecognitionService(RecognitionSessionRepository sessions,
+                              RecognitionItemRepository items,
+                              RecognitionFeedbackRepository feedback,
+                              FoodRepository foods, NutritionCalculator calculator,
+                              RecognitionResultIngestionService resultIngestion,
+                              PlatformTransactionManager transactionManager,
+                              @Value("${foodai.ai.base-url:http://localhost:8000/predict}") String aiBaseUrl,
+                              @Value("${foodai.ai.mock:false}") boolean useMock,
+                              @Value("${foodai.ai.fallback.enabled:false}") boolean fallbackEnabled) {
+        this.sessions = sessions;
+        this.items = items;
+        this.feedback = feedback;
+        this.foods = foods;
+        this.calculator = calculator;
+        this.resultIngestion = resultIngestion;
+        this.aiClient = buildAiClient();
+        this.transactions = new TransactionTemplate(transactionManager);
+        this.aiBaseUrl = aiBaseUrl;
+        this.useMock = useMock;
+        this.fallbackEnabled = fallbackEnabled;
+    }
+
+    private static RestClient buildAiClient() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(30));
+        return RestClient.builder().requestFactory(requestFactory).build();
     }
 
     @Transactional
@@ -63,9 +127,123 @@ public class RecognitionService {
         session.setMimeType(request.mimeType());
         session.setFileSizeBytes(request.fileSizeBytes());
         session.setStatus(RecognitionSession.Status.UPLOADED);
-        return new RecognitionResponse(sessions.save(session).getId(), session.getStatus(),
-                session.getImageUrl(), null, List.of());
+        RecognitionSession saved = sessions.save(session);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            Long sessionId = saved.getId();
+            String imageUrl = saved.getImageUrl();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    CompletableFuture.runAsync(() -> processSession(sessionId, imageUrl));
+                }
+            });
+        }
+        return new RecognitionResponse(saved.getId(), saved.getStatus(),
+                saved.getImageUrl(), null, List.of(), false);
     }
+
+    private void processSession(Long sessionId, String imageUrl) {
+        try {
+            transactions.executeWithoutResult(status -> {
+                RecognitionSession session = sessions.findLockedById(sessionId)
+                        .orElseThrow(() -> new IllegalStateException("Recognition session disappeared."));
+                if (session.getStatus() != RecognitionSession.Status.UPLOADED) return;
+                session.setStatus(RecognitionSession.Status.PROCESSING);
+                sessions.save(session);
+            });
+
+            if (useMock) {
+                completeWithMock(sessionId);
+                return;
+            }
+
+            AiResult result = aiClient.post()
+                    .uri(aiBaseUrl)
+                    .body(new AiRequest(sessionId, imageUrl))
+                    .retrieve()
+                    .body(AiResult.class);
+            if (result == null || result.modelVersion() == null || result.predictions() == null) {
+                throw new IllegalStateException("AI service returned an incomplete response.");
+            }
+            List<Prediction> predictions = result.predictions().stream()
+                    .map(p -> new Prediction(p.label(), p.confidence(), p.estimatedGrams(),
+                            p.bboxX(), p.bboxY(), p.bboxWidth(), p.bboxHeight()))
+                    .toList();
+            resultIngestion.saveAiResults(sessionId, result.modelVersion(), predictions);
+        } catch (Exception ex) {
+            log.error("AI recognition failed for session {}.", sessionId, ex);
+            if (fallbackEnabled) {
+                try {
+                    completeWithMock(sessionId);
+                    return;
+                } catch (Exception mockException) {
+                    log.error("Mock recognition fallback failed for session {}.", sessionId, mockException);
+                }
+            }
+            markFailed(sessionId);
+        }
+    }
+
+    private void completeWithMock(Long sessionId) {
+        log.error("MOCK RECOGNITION ENABLED for session {}: generated results are synthetic and are NOT real AI predictions.",
+                sessionId);
+        transactions.executeWithoutResult(status -> {
+            RecognitionSession session = sessions.findLockedById(sessionId)
+                    .orElseThrow(() -> new IllegalStateException("Recognition session disappeared."));
+            if (session.getStatus() != RecognitionSession.Status.PROCESSING ||
+                    items.existsBySessionId(sessionId)) {
+                throw new IllegalStateException("Session cannot accept mock recognition results.");
+            }
+            List<Food> mockFoods = new ArrayList<>();
+            foods.findById(1L).ifPresent(mockFoods::add);
+            foods.findById(2L).ifPresent(mockFoods::add);
+            if (mockFoods.isEmpty()) {
+                throw new IllegalStateException("Mock recognition requires food record ID 1 or 2.");
+            }
+            for (Food food : mockFoods) {
+                RecognitionItem item = new RecognitionItem();
+                item.setSession(session);
+                item.setPredictedLabel(food.getNameVi());
+                item.setPredictedFood(food);
+                item.setConfidenceScore(new BigDecimal("0.95000"));
+                item.setEstimatedGrams(food.getStandardServingGrams() == null
+                        ? new BigDecimal("100.00") : food.getStandardServingGrams());
+                item.setPortionMultiplier(BigDecimal.ONE.setScale(3));
+                item.setPortionMethod(RecognitionItem.PortionMethod.AI_ESTIMATE);
+                item.setItemStatus(RecognitionItem.ItemStatus.PREDICTED);
+                items.save(item);
+            }
+            session.setModelVersion(MOCK_MODEL_VERSION);
+            session.setStatus(RecognitionSession.Status.COMPLETED);
+            session.setFinishedAt(finishedAt(session));
+            sessions.save(session);
+        });
+    }
+
+    private void markFailed(Long sessionId) {
+        try {
+            transactions.executeWithoutResult(status -> sessions.findLockedById(sessionId).ifPresent(session -> {
+                session.setStatus(RecognitionSession.Status.FAILED);
+                session.setErrorCode("AI_SERVICE_FAILURE");
+                session.setFinishedAt(finishedAt(session));
+                sessions.save(session);
+            }));
+        } catch (Exception ex) {
+            log.error("Could not mark recognition session {} as failed.", sessionId, ex);
+        }
+    }
+
+    private static LocalDateTime finishedAt(RecognitionSession session) {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        return session.getCreatedAt() != null && now.isBefore(session.getCreatedAt())
+                ? session.getCreatedAt() : now;
+    }
+
+    private record AiRequest(Long sessionId, String imageUrl) {}
+    private record AiResult(String modelVersion, List<AiPrediction> predictions) {}
+    private record AiPrediction(String label, BigDecimal confidence, BigDecimal estimatedGrams,
+                                BigDecimal bboxX, BigDecimal bboxY,
+                                BigDecimal bboxWidth, BigDecimal bboxHeight) {}
 
     @Transactional(readOnly = true)
     public RecognitionResponse get(Long sessionId, User user) {

@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8080";
+const API_BASE = window.FoodAIConfig.apiBaseUrl;
 const TOKEN_KEY = "foodai-token";
 
 const SEX_LABELS = { MALE: "Nam", FEMALE: "Nữ", UNSPECIFIED: "Chưa xác định" };
@@ -30,7 +30,9 @@ async function apiFetch(path, options = {}) {
 	try {
 		response = await fetch(`${API_BASE}${path}`, {
 			method, headers,
-			body: options.body === undefined ? undefined : JSON.stringify(options.body)
+			body: options.formData !== undefined
+				? options.formData
+				: options.body === undefined ? undefined : JSON.stringify(options.body)
 		});
 	} catch (error) {
 		throw new Error("Không kết nối được máy chủ FoodAI. Hãy đảm bảo backend đang chạy trên " + API_BASE + ".");
@@ -38,15 +40,65 @@ async function apiFetch(path, options = {}) {
 	let payload = null;
 	try { payload = await response.json(); } catch (error) { payload = null; }
 	if (!response.ok) {
-		const message = (payload && (payload.detail || payload.title)) || `Lỗi ${response.status} từ máy chủ.`;
-		throw new Error(message);
+		const message = (payload && (payload.message || payload.detail || payload.title)) || `Lỗi ${response.status} từ máy chủ.`;
+		const error = new Error(message);
+		error.status = response.status;
+		throw error;
 	}
+	if (payload?.success === false) throw new Error(payload.message || "Yêu cầu không thành công.");
 	return payload;
+}
+
+function apiResponseData(response) {
+	if (!response || typeof response !== "object" || !Object.hasOwn(response, "data")) {
+		throw new Error("Phản hồi từ máy chủ không đúng định dạng.");
+	}
+	return response.data;
 }
 
 const authApi = {
 	register: (data) => apiFetch("/api/v1/auth/register", { method: "POST", body: data, auth: false }),
 	login: (data) => apiFetch("/api/v1/auth/login", { method: "POST", body: data, auth: false })
+};
+
+const foodImageApi = {
+	async upload(file) {
+		const formData = new FormData();
+		formData.append("file", file);
+		return apiResponseData(await apiFetch("/api/v1/images/upload", { method: "POST", formData }));
+	}
+};
+
+const recognitionApi = {
+	async createSession(data) {
+		return apiResponseData(await apiFetch("/api/v1/recognitions/sessions", { method: "POST", body: data }));
+	},
+	async getSession(sessionId) {
+		return apiResponseData(await apiFetch(`/api/v1/recognitions/${encodeURIComponent(sessionId)}`));
+	},
+	async reviewItem(sessionId, itemId, data) {
+		return apiResponseData(await apiFetch(
+			`/api/v1/recognitions/${encodeURIComponent(sessionId)}/items/${encodeURIComponent(itemId)}/review`,
+			{ method: "PATCH", body: data }
+		));
+	}
+};
+
+const nutritionApi = {
+	calculate: (foodId, weight) => apiFetch("/api/v1/nutrition/calculate", {
+		method: "POST", body: { foodId, weight }
+	})
+};
+
+const diaryApi = {
+	async getDaily(date) {
+		return apiResponseData(await apiFetch(`/api/v1/diary/daily?date=${encodeURIComponent(date)}`));
+	},
+	async saveMeal(mealData) {
+		return apiResponseData(await apiFetch("/api/v1/diary/meals", {
+			method: "POST", body: mealData
+		}));
+	}
 };
 
 const profileApi = {
@@ -57,8 +109,10 @@ const profileApi = {
 
 async function fetchMe() {
 	const me = await apiFetch("/api/v1/me");
+	if (!me?.user?.id || !me.user.email) throw new Error("Thông tin xác thực không hợp lệ.");
 	state.user = me.user || null;
 	state.me = me;
+	state.authenticated = true;
 	return me;
 }
 
@@ -67,8 +121,8 @@ function fmtNumber(value) {
 }
 
 function initials(fullName) {
-	const part = String(fullName || "Minh Anh").trim().split(/\s+/).filter(Boolean);
-	return (part.map((item) => item[0].toUpperCase()).join("") || "MA").slice(0, 3);
+	const part = String(fullName || "User").trim().split(/\s+/).filter(Boolean);
+	return (part.map((item) => item[0].toUpperCase()).join("") || "U").slice(0, 3);
 }
 
 function profileDisplay() {
@@ -78,9 +132,9 @@ function profileDisplay() {
 	const joined = state.user?.createdAt && !isNaN(new Date(state.user.createdAt)) ? new Date(state.user.createdAt) : null;
 	if (!profile || !goals) {
 		return {
-			name: state.user?.fullName || "Minh Anh",
-			email: state.user?.email || "minhanh@gmail.com",
-			joined: joined ? `${String(joined.getMonth() + 1).padStart(2, "0")}/${joined.getFullYear()}` : "01/2026",
+			name: state.user?.fullName || "Tài khoản FoodAI",
+			email: state.user?.email || "",
+			joined: joined ? `${String(joined.getMonth() + 1).padStart(2, "0")}/${joined.getFullYear()}` : "—",
 			heightCm: "170", weightKg: "65.0", ageYears: "21", sex: "Nam",
 			activity: "Vận động nhẹ (1-3 ngày / tuần)", daily: "2,000", bmr: "1,650", tdee: "2,200",
 			protein: "150g", carbs: "225g", fat: "55g", goalLabel: "Giảm cân",
@@ -89,9 +143,9 @@ function profileDisplay() {
 	}
 	const dayNote = goalType === "LOSE" ? "-500 kcal/ngày" : goalType === "GAIN" ? "+300 kcal/ngày" : "duy trì theo TDEE";
 	return {
-		name: state.user?.fullName || "Minh Anh",
-		email: state.user?.email || "minhanh@gmail.com",
-		joined: joined ? `${String(joined.getMonth() + 1).padStart(2, "0")}/${joined.getFullYear()}` : "01/2026",
+		name: state.user?.fullName || "Tài khoản FoodAI",
+		email: state.user?.email || "",
+		joined: joined ? `${String(joined.getMonth() + 1).padStart(2, "0")}/${joined.getFullYear()}` : "—",
 		heightCm: profile.heightCm != null ? profile.heightCm : "—",
 		weightKg: profile.currentWeightKg != null ? Number(profile.currentWeightKg).toFixed(1) : "—",
 		ageYears: profile.ageYears != null ? profile.ageYears : "—",

@@ -1,4 +1,5 @@
 function render() {
+	if (!state.authenticated && !state.view.startsWith("auth-")) state.view = "auth-login";
 	const auth = state.view.startsWith("auth-");
 	let content;
 	if (auth) content = authView(state.view);
@@ -22,14 +23,23 @@ function render() {
 }
 
 function navigate(view, mobilePreview = state.mobilePreview) {
+	if (view !== "recognition-camera" && state.cameraStream) stopWebcamStream();
+	if (!view || view === "login") view = "auth-login";
+	if (!view.startsWith("auth-") && !state.authenticated) {
+		view = "auth-login";
+		mobilePreview = false;
+	}
 	state.view = view;
 	state.mobilePreview = mobilePreview;
 	state.selectedImage = state.selectedImage || null;
 	history.replaceState(null, "", `#${view}`);
 	render();
-	if (view === "recognition-processing") {
+	if (view === "diary") loadDiaryForDate();
+	if (view === "recognition-processing" && !state.recognitionLoading && !state.recognitionSession) {
 		window.setTimeout(() => {
-			if (state.view === "recognition-processing") navigate("recognition-single", state.mobilePreview);
+			if (state.view === "recognition-processing" && !state.recognitionLoading && !state.recognitionSession) {
+				navigate("recognition-single", state.mobilePreview);
+			}
 		}, 1800);
 	}
 	window.scrollTo({ top: 0, behavior: "smooth" });

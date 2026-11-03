@@ -2,7 +2,7 @@ function mobileNavigation() {
 	return `<nav class="mobile-nav" aria-label="Điều hướng chính">
 		<button data-action="dashboard" class="${state.view === "dashboard" ? "is-active" : ""}">${icon("house", 18)}<span>Trang chủ</span></button>
 		<button data-action="diary" class="${state.view === "diary" || state.view === "trends" ? "is-active" : ""}">${icon("notebook-tabs", 18)}<span>Nhật ký</span></button>
-		<button data-action="recognition-upload" class="scan-tab">${icon("camera", 21)}</button>
+		<button data-action="open-camera" class="scan-tab" aria-label="Mở camera">${icon("camera", 21)}</button>
 		<button data-action="recommendations" class="${state.view.startsWith("recommend") ? "is-active" : ""}">${icon("sparkles", 18)}<span>Gợi ý</span></button>
 		<button data-action="profile" class="${state.view === "profile" ? "is-active" : ""}">${icon("user-round", 18)}<span>Cá nhân</span></button>
 	</nav>`;
@@ -60,8 +60,8 @@ function appShell(content) {
 				<button class="nav-link ${activeNav === "admin" ? "is-active" : ""}" data-action="admin">${icon("database")}<span>Quản trị món ăn</span></button>
 			</nav>
 			<button class="sidebar-profile" data-action="profile">
-				<span class="avatar">MA</span>
-				<span class="sidebar-profile-copy"><strong>${esc(state.user?.fullName || "Minh Anh")}</strong><small>${esc(state.user?.email || "minhanh@gmail.com")}${state.me?.goals ? " · " + esc((GOAL_LABELS[state.me?.goals?.goalType] || "Đang hoạt động")) : " · Đang hoạt động"}</small></span>
+				<span class="avatar">${esc(initials(state.user?.fullName))}</span>
+				<span class="sidebar-profile-copy"><strong>${esc(state.user?.fullName || "Tài khoản FoodAI")}</strong><small>${esc(state.user?.email || "")}${state.me?.goals ? " · " + esc((GOAL_LABELS[state.me?.goals?.goalType] || "Đang hoạt động")) : ""}</small></span>
 			</button>
 		</aside>
 		<section class="workspace">

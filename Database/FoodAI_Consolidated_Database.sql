@@ -1,8 +1,3 @@
--- FoodAI - Smart Food Recognition & Calories Tracking
--- Consolidated MySQL 8.0+ schema aligned with the web-based project proposal.
--- Stack: Spring Boot backend + MySQL; Python/YOLOv8 AI service communicates via API.
--- IMPORTANT: Demo seed rows are explicitly marked ESTIMATED/DEMO_UNVERIFIED.
--- Review this schema against the team's final FR list before production deployment.
 
 CREATE DATABASE IF NOT EXISTS foodai
   CHARACTER SET utf8mb4
@@ -391,14 +386,15 @@ INSERT INTO food_categories (name_vi, name_en) VALUES
     ('Món cuốn', 'Fresh rolls');
 
 -- Example foods are not authoritative nutrition advice/data.
+-- ĐOẠN MỚI (ĐÃ SỬA):
 INSERT INTO foods (
     category_id, name_vi, name_en, region_vi, standard_serving_label,
     standard_serving_grams, calories_per_100g_kcal, protein_per_100g_g,
     carbs_per_100g_g, fat_per_100g_g, data_quality, catalog_status, nutrition_source
 ) VALUES
     (1, 'Phở gà', 'Chicken pho', 'Việt Nam', '1 tô vừa', 500.00,
-     84.00, 7.60, 10.40, 2.40, 'ESTIMATED', 'DRAFT', 'Placeholder estimate - verify before publishing'),
+     84.00, 7.60, 10.40, 2.40, 'ESTIMATED', 'PUBLISHED', 'Placeholder estimate - verify before publishing'),
     (2, 'Cơm tấm sườn', 'Broken rice with pork chop', 'Miền Nam', '1 đĩa vừa', 400.00,
-     155.00, 8.00, 19.50, 4.50, 'ESTIMATED', 'DRAFT', 'Placeholder estimate - verify before publishing'),
+     155.00, 8.00, 19.50, 4.50, 'ESTIMATED', 'PUBLISHED', 'Placeholder estimate - verify before publishing'),
     (1, 'Bún bò Huế', 'Hue-style beef noodle soup', 'Miền Trung', '1 tô vừa', 550.00,
-     94.55, 5.45, 10.55, 2.91, 'ESTIMATED', 'DRAFT', 'Placeholder estimate - verify before publishing');
+     94.55, 5.45, 10.55, 2.91, 'ESTIMATED', 'PUBLISHED', 'Placeholder estimate - verify before publishing');

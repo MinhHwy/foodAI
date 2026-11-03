@@ -7,7 +7,13 @@ import java.util.List;
 
 public record RecognitionResponse(
         Long sessionId, RecognitionSession.Status status, String imageUrl,
-        String modelVersion, List<Item> items) {
+        String modelVersion, List<Item> items, boolean isMocked) {
+    public RecognitionResponse(Long sessionId, RecognitionSession.Status status, String imageUrl,
+                               String modelVersion, List<Item> items) {
+        this(sessionId, status, imageUrl, modelVersion, items,
+                modelVersion != null && modelVersion.startsWith("mock:"));
+    }
+
     public record Item(
             Long id, String predictedLabel, Long predictedFoodId, String predictedFoodName,
             BigDecimal confidenceScore, Long selectedFoodId, String selectedFoodName,
