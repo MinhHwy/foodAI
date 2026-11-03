@@ -59,7 +59,7 @@ public class DiaryItem {
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	protected DiaryItem() {}
+	public DiaryItem() {}
 
 	public Long getId() { return id; }
 	public DiaryMeal getMeal() { return meal; }

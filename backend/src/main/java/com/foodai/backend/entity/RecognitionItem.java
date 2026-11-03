@@ -88,7 +88,7 @@ public class RecognitionItem {
 	@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime updatedAt;
 
-	protected RecognitionItem() {}
+	public RecognitionItem() {}
 
 	public Long getId() { return id; }
 	public RecognitionSession getSession() { return session; }

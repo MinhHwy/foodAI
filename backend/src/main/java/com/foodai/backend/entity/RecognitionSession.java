@@ -58,7 +58,7 @@ public class RecognitionSession {
 	@Column(name = "finished_at")
 	private LocalDateTime finishedAt;
 
-	protected RecognitionSession() {}
+	public RecognitionSession() {}
 
 	public Long getId() { return id; }
 	public User getUser() { return user; }

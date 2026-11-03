@@ -48,7 +48,7 @@ public class RecognitionFeedback {
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	protected RecognitionFeedback() {}
+	public RecognitionFeedback() {}
 
 	public Long getId() { return id; }
 	public RecognitionItem getRecognitionItem() { return recognitionItem; }

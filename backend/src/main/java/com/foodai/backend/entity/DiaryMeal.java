@@ -51,7 +51,7 @@ public class DiaryMeal {
 	@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime updatedAt;
 
-	protected DiaryMeal() {}
+	public DiaryMeal() {}
 
 	public Long getId() { return id; }
 	public User getUser() { return user; }
