@@ -66,7 +66,7 @@ public class UserGoal {
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	protected UserGoal() {}
+	public UserGoal() {}
 
 	public Long getId() { return id; }
 	public User getUser() { return user; }

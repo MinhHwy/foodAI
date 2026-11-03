@@ -3,10 +3,12 @@ package com.foodai.backend.service;
 import com.foodai.backend.entity.User;
 import com.foodai.backend.exception.FoodApiException;
 import com.foodai.backend.repository.*;
+import com.foodai.backend.auth.CurrentUser;
 import java.security.Principal;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -25,6 +27,20 @@ class OwnershipTest {
         active.setEmail("user@example.com");
         when(users.findByEmail("user@example.com")).thenReturn(Optional.of(active));
         assertEquals(7L, new CurrentFoodUser(users).require((Principal) () -> "user@example.com").getId());
+    }
+
+    @Test
+    void jwtPrincipalNameResolvesTheSameActiveUserForDiaryAndRecognition() {
+        UserRepository users = mock(UserRepository.class);
+        User active = new User(7L);
+        active.setEmail("user@example.com");
+        CurrentUser jwtPrincipal = new CurrentUser(7L, "user@example.com", "Food User", "USER", 0);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                jwtPrincipal, null, jwtPrincipal.authorities());
+        when(users.findByEmail("user@example.com")).thenReturn(Optional.of(active));
+
+        assertEquals("user@example.com", authentication.getName());
+        assertSame(active, new CurrentFoodUser(users).require(authentication));
     }
 
     @Test

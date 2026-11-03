@@ -19,6 +19,10 @@ public class CurrentFoodUser {
         }
         User user = users.findByEmail(principal.getName())
                 .orElseThrow(() -> new FoodApiException(HttpStatus.UNAUTHORIZED, "Unknown user."));
+        return requireActive(user);
+    }
+
+    private User requireActive(User user) {
         if (user.getAccountStatus() != User.AccountStatus.ACTIVE) {
             throw new FoodApiException(HttpStatus.FORBIDDEN, "Account is not active.");
         }

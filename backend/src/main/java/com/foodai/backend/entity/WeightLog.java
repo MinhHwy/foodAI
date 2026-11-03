@@ -33,7 +33,7 @@ public class WeightLog {
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime createdAt;
 
-	protected WeightLog() {}
+	public WeightLog() {}
 
 	public Long getId() { return id; }
 	public User getUser() { return user; }

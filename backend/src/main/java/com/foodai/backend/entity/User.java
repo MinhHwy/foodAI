@@ -72,6 +72,10 @@ public class User {
     public void setEmailVerifiedAt(LocalDateTime emailVerifiedAt) { this.emailVerifiedAt = emailVerifiedAt; }
     public Integer getTokenVersion() { return tokenVersion; }
     public void setTokenVersion(Integer tokenVersion) { this.tokenVersion = tokenVersion; }
+    public Integer incrementTokenVersion() {
+        tokenVersion = tokenVersion + 1;
+        return tokenVersion;
+    }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

@@ -90,7 +90,7 @@ public class Food {
 	@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime updatedAt;
 
-	protected Food() {}
+	public Food() {}
 
 	public Long getId() { return id; }
 	public FoodCategory getCategory() { return category; }

@@ -12,6 +12,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.JdbcType;
 
 @Entity
 @Table(name = "user_profiles")
@@ -28,8 +29,9 @@ public class UserProfile {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@Column(name = "age_years")
-	private Short ageYears;
+	@Column(name = "age_years", columnDefinition = "smallint unsigned")
+	@JdbcType(UnsignedSmallIntJdbcType.class)
+	private Integer ageYears;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "biological_sex", nullable = false)
@@ -51,13 +53,13 @@ public class UserProfile {
 	@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime updatedAt;
 
-	protected UserProfile() {}
+	public UserProfile() {}
 
 	public Long getUserId() { return userId; }
 	public User getUser() { return user; }
 	public void setUser(User user) { this.user = user; }
-	public Short getAgeYears() { return ageYears; }
-	public void setAgeYears(Short ageYears) { this.ageYears = ageYears; }
+	public Integer getAgeYears() { return ageYears; }
+	public void setAgeYears(Integer ageYears) { this.ageYears = ageYears; }
 	public BiologicalSex getBiologicalSex() { return biologicalSex; }
 	public void setBiologicalSex(BiologicalSex biologicalSex) { this.biologicalSex = biologicalSex; }
 	public BigDecimal getHeightCm() { return heightCm; }

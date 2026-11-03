@@ -5,7 +5,10 @@ const state = {
 	cameraOn: false,
 	mealChoice: "Bữa trưa",
 	diaryTab: "today",
-	search: ""
+	search: "",
+	user: null,
+	me: null,
+	setupGoal: null
 };
 
 const mealNames = ["Bữa sáng", "Bữa trưa", "Bữa tối", "Bữa phụ / Ăn vặt"];

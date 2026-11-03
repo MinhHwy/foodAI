@@ -47,7 +47,7 @@ public class UserSettings {
 	@Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
 	private LocalDateTime updatedAt;
 
-	protected UserSettings() {}
+	public UserSettings() {}
 
 	public Long getUserId() { return userId; }
 	public User getUser() { return user; }
