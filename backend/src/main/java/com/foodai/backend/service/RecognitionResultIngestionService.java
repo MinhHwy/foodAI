@@ -98,30 +98,70 @@ public class RecognitionResultIngestionService {
         return value == null ? null : value.setScale(6, RoundingMode.UNNECESSARY);
     }
 
-    private static void checkBox(Prediction p) {
-        BigDecimal[] v = {p.bboxX(), p.bboxY(), p.bboxWidth(), p.bboxHeight()};
-        boolean allNull = true;
-        boolean allPresent = true;
-        for (BigDecimal n : v) { allNull &= n == null; allPresent &= n != null; }
-        if (!allNull && !allPresent) {
-            throw new FoodApiException(HttpStatus.BAD_REQUEST, "Incomplete detection bbox.");
-        }
-        // DECIMAL(7,6) stores at most six fractional digits. Reject values that
-        // would round in the database and potentially invalidate bbox boundaries.
-        for (BigDecimal n : v) {
-            if (n != null) {
-                try { normalizedBbox(n); }
-                catch (ArithmeticException ex) {
-                    throw new FoodApiException(HttpStatus.BAD_REQUEST,
-                            "Detection bbox supports at most six digits after the decimal point.");
-                }
+    
+private static void checkBox(Prediction p) {
+    BigDecimal[] v = {
+        p.bboxX(),
+        p.bboxY(),
+        p.bboxWidth(),
+        p.bboxHeight()
+    };
+
+    boolean allNull = true;
+    boolean allPresent = true;
+
+    for (BigDecimal n : v) {
+        allNull &= n == null;
+        allPresent &= n != null;
+    }
+
+    if (!allNull && !allPresent) {
+        throw new FoodApiException(
+            HttpStatus.BAD_REQUEST,
+            "Incomplete detection bbox."
+        );
+    }
+
+    for (BigDecimal n : v) {
+        if (n != null) {
+            try {
+                normalizedBbox(n);
+            } catch (ArithmeticException ex) {
+                throw new FoodApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "Detection bbox supports at most six digits after the decimal point."
+                );
             }
         }
-        if (allPresent && (v[0].signum() < 0 || v[1].signum() < 0 ||
-                v[2].signum() <= 0 || v[3].signum() <= 0 ||
-                v[0].add(v[2]).compareTo(BigDecimal.ONE) > 0 ||
-                v[1].add(v[3]).compareTo(BigDecimal.ONE) > 0)) {
-            throw new FoodApiException(HttpStatus.BAD_REQUEST, "Invalid detection bbox (0..1).");
+    }
+
+    if (allPresent) {
+        BigDecimal half = new BigDecimal("0.5");
+
+        BigDecimal halfWidth = v[2].multiply(half);
+        BigDecimal halfHeight = v[3].multiply(half);
+
+        BigDecimal left = v[0].subtract(halfWidth);
+        BigDecimal right = v[0].add(halfWidth);
+
+        BigDecimal top = v[1].subtract(halfHeight);
+        BigDecimal bottom = v[1].add(halfHeight);
+
+        if (v[0].signum() < 0 ||
+            v[1].signum() < 0 ||
+            v[2].signum() <= 0 ||
+            v[3].signum() <= 0 ||
+            left.signum() < 0 ||
+            top.signum() < 0 ||
+            right.compareTo(BigDecimal.ONE) > 0 ||
+            bottom.compareTo(BigDecimal.ONE) > 0) {
+
+            throw new FoodApiException(
+                HttpStatus.BAD_REQUEST,
+                "Invalid detection bbox (0..1)."
+            );
         }
     }
+}
+
 }

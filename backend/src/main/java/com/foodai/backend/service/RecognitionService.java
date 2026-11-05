@@ -1,5 +1,5 @@
 package com.foodai.backend.service;
-
+import org.springframework.http.MediaType;
 import com.foodai.backend.dto.request.ConfirmRecognitionItemRequest;
 import com.foodai.backend.dto.request.CreateRecognitionSessionRequest;
 import com.foodai.backend.dto.response.RecognitionResponse;
@@ -95,15 +95,21 @@ public class RecognitionService {
         this.fallbackEnabled = fallbackEnabled;
     }
 
-    private static RestClient buildAiClient() {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofSeconds(30));
-        return RestClient.builder().requestFactory(requestFactory).build();
-    }
+   private static RestClient buildAiClient() {
+    HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
+    JdkClientHttpRequestFactory requestFactory =
+            new JdkClientHttpRequestFactory(httpClient);
+
+    requestFactory.setReadTimeout(Duration.ofSeconds(30));
+
+    return RestClient.builder()
+            .requestFactory(requestFactory)
+            .build();
+}
     @Transactional
     public RecognitionResponse create(CreateRecognitionSessionRequest request, User user) {
         try {
@@ -157,11 +163,16 @@ public class RecognitionService {
                 return;
             }
 
-            AiResult result = aiClient.post()
-                    .uri(aiBaseUrl)
-                    .body(new AiRequest(sessionId, imageUrl))
-                    .retrieve()
-                    .body(AiResult.class);
+           AiResult result = aiClient.post()
+        .uri(aiBaseUrl)
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .body(java.util.Map.of(
+                "sessionId", sessionId,
+                "imageUrl", imageUrl
+        ))
+        .retrieve()
+        .body(AiResult.class);
             if (result == null || result.modelVersion() == null || result.predictions() == null) {
                 throw new IllegalStateException("AI service returned an incomplete response.");
             }
